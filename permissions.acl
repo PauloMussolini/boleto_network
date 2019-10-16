@@ -1,0 +1,123 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+rule R1_PessoaPodemVerSeusBoletosSeForemPagadorOuBeneficiario {
+  description: "PessoaPodemVerSeusBoletosSeForemPagadorOuBeneficiario"
+  participant(p): "org.boleto.cto.Pessoa"
+  operation: READ
+  resource(b): "org.boleto.cto.Boleto"
+  condition: (b.pagador.getIdentifier() === p.getIdentifier()
+              || b.beneficiario.getIdentifier() === p.getIdentifier())
+  action: ALLOW
+}
+
+rule R2_CadaParticipantePodeVerApenasSeuProprioHistory {
+  description: "CadaParticipantePodeVerApenasSeuProprioHistory"
+  participant(t): "org.boleto.cto.**"
+  operation: READ
+  resource(v): "org.hyperledger.composer.system.HistorianRecord"
+  condition: (v.participantInvoking.getIdentifier() != t.getIdentifier())
+  action: DENY
+}
+
+
+
+rule R3_BancoVeSeusBoletoCriadosNaoRegistrado {
+  description: "Bancos can see/work with their own Boletos after payment"
+  participant(t): "org.boleto.cto.Banco"
+  operation: ALL
+  resource(c): "org.boleto.cto.Boleto"
+  condition: (c.ifBeneficiario.getIdentifier() === t.getIdentifier()
+             && c.status === 'NAO_REGISTRADO')
+  action: ALLOW
+}
+
+rule R4_BancoSeeAllBoletoPendente {
+  description: "Members can see/work with All Boletos in PEDENTE"
+  participant(t): "org.boleto.cto.Banco"
+  operation: ALL
+  resource(c): "org.boleto.cto.Boleto"
+  condition: (c.status === 'PENDENTE')
+  action: ALLOW
+}
+
+
+rule R5_BancoSeeOwn {
+    description: "BancoSeeOwn"
+    participant(p): "org.boleto.cto.Banco"
+    operation: ALL
+    resource(r): "org.boleto.cto.Banco"
+    condition:(p.getIdentifier() === r.getIdentifier())
+    action: ALLOW
+}
+
+rule R6_PessoaSeeOwn {
+    description: "PessoaSeeOwn"
+    participant(p): "org.boleto.cto.Pessoa"
+    operation: ALL
+    resource(r): "org.boleto.cto.Pessoa"
+    condition:(p.getIdentifier() === r.getIdentifier())
+    action: ALLOW
+}
+
+
+rule R7_EnableRegistroBoletoTxn {
+    description: "EnableRegistroBoletoTxn para os Bancos"
+    participant: "org.boleto.cto.Banco"
+    operation: ALL
+    resource: "org.boleto.cto.RegistroBoleto"              
+    action: ALLOW
+}
+
+rule R8_BancoPodeApenasCriarBoleto {
+    description: "Banco Pode Apenas Criar Boleto"
+    participant: "org.boleto.cto.Banco"
+    operation: CREATE
+    resource: "org.boleto.cto.Boleto"             
+    action: ALLOW
+}
+
+
+
+/*rule Default {
+    description: "Allow all participants access to all resources"
+    participant: "ANY"
+    operation: ALL
+    resource: "org.boleto.cto.*"
+    action: ALLOW
+}*/
+
+rule SystemACL {
+    description:  "System ACL to permit all access"
+    participant: "org.hyperledger.composer.system.Participant"
+    operation: ALL
+    resource: "org.hyperledger.composer.system.**"
+    action: ALLOW
+}
+
+rule NetworkAdminUser {
+    description: "Grant business network administrators full access to user resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "**"
+    action: ALLOW
+}
+
+rule NetworkAdminSystem {
+    description: "Grant business network administrators full access to system resources"
+    participant: "org.hyperledger.composer.system.NetworkAdmin"
+    operation: ALL
+    resource: "org.hyperledger.composer.system.**"
+    action: ALLOW
+}
